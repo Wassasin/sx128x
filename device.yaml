@@ -1,0 +1,707 @@
+config:
+  default_byte_order: LE
+  command_address_type: u8
+  register_address_type: u16
+  defmt_feature: "defmt-1"
+
+# 12. List of Commands
+GET_STATUS:
+  type: command
+  address: 0xC0
+  size_bits_out: 8
+
+SET_SLEEP:
+  type: command
+  address: 0x84
+  size_bits_in: 8
+  fields_in:
+    buffer_retention:
+      base: bool
+      start: 1
+    ram_retention:
+      base: bool
+      start: 0
+
+SET_STANDBY:
+  type: command
+  address: 0x80
+  size_bits_in: 8
+  fields_in:
+    standby_config:
+      base: uint
+      start: 0
+      end: 1
+      conversion:
+        name: standby_config
+        stdby_rc: 0
+        stdby_xosc: 1
+
+SET_TX:
+  type: command
+  description: >
+    Sets the device in Transmit mode.
+
+    Clear IRQ status before using this command.
+  address: 0x83
+  size_bits_in: 24
+  fields_in:
+    period_base:
+      base: uint
+      start: 16
+      end: 18
+      conversion:
+        name: tx_timeout_step
+        step15us625: 0x00
+        step62us5: 0x01
+        step1ms: 0x02
+        step4ms: 0x03
+    period_base_count:
+      base: uint
+      start: 0
+      end: 16
+      conversion:
+        name: tx_timeout_base_count
+        single_mode: 0x0000
+        other: catch_all
+
+SET_RX:
+  type: command
+  description: >
+    Sets the device in Receive mode.
+
+    Clear IRQ status before using this command.
+  address: 0x82
+  size_bits_in: 24
+  fields_in:
+    period_base:
+      base: uint
+      start: 16
+      end: 18
+      conversion:
+        name: rx_timeout_step
+        step15us625: 0x00
+        step62us5: 0x01
+        step1ms: 0x02
+        step4ms: 0x03
+    period_base_count:
+      base: uint
+      start: 0
+      end: 16
+      conversion:
+        name: rx_timeout_base_count
+        single_mode:
+          value: 0x0000
+        other:
+          value: catch_all
+        continuous: 0xFFFF
+
+SET_RX_DUTY_CYCLE:
+  type: command
+  address: 0x94
+  size_bits_in: 16
+
+SET_CAD:
+  type: command
+  address: 0xC5
+
+SET_TX_CONTINUOUS_WAVE:
+  type: command
+  address: 0xD1
+
+SET_TX_CONTINUOUS_PREAMBLE:
+  type: command
+  address: 0xD2
+
+SET_PACKET_TYPE:
+  type: command
+  description: >
+    The command SetPacketType() sets the transceiver radio frame out of a choice of 5 different packet types.
+
+    Despite some packet types using the same physical modem, they do not all share the same parameters.
+  address: 0x8A
+  size_bits_in: 8
+  fields_in:
+    value:
+      base: uint
+      start: 0
+      end: 8
+      conversion:
+        name: packet_type
+        gfsk: 0x00
+        lora: 0x01
+        ranging: 0x02
+        flrc: 0x03
+        BLE: 0x04
+        reserved: catch_all
+
+GET_PACKET_TYPE:
+  type: command
+  address: 0x03
+  size_bits_out: 8
+
+SET_RF_FREQUENCY:
+  type: command
+  address: 0x86
+  size_bits_in: 24
+  fields_in:
+    value:
+      base: uint
+      start: 0
+      end: 24
+
+SET_TX_PARAMS:
+  type: command
+  address: 0x8E
+  size_bits_in: 16
+  fields_in:
+    power:
+      base: uint
+      start: 8
+      end: 16
+    ramp_time:
+      base: uint
+      start: 0
+      end: 8
+      conversion:
+        name: ramp_time
+        radio_ramp_02_us: 0x00
+        radio_ramp_04_us: 0x20
+        radio_ramp_06_us: 0x40
+        radio_ramp_08_us: 0x60
+        radio_ramp_10_us: 0x80
+        radio_ramp_12_us: 0xA0
+        radio_ramp_16_us: 0xC0
+        radio_ramp_20_us: 0xE0
+        other: default
+
+SET_CAD_PARAMS:
+  type: command
+  description: The number of symbols on which Channel Activity Detected (CAD) operates.
+  address: 0x88
+  size_bits_in: 8
+  fields_in:
+    value:
+      base: uint
+      start: 0
+      end: 8
+      conversion:
+        name: lora_cad_symbols
+        lora_cad_01_symbols: 0x00
+        lora_cad_02_symbols: 0x20
+        lora_cad_04_symbols: 0x40
+        lora_cad_08_symbols: 0x60
+        lora_cad_16_symbols: 0x80
+        other: default
+
+SET_BUFFER_BASE_ADDRESS:
+  type: command
+  address: 0x8F
+  size_bits_in: 16
+  fields_in:
+    tx_base_address:
+      base: uint
+      start: 8
+      end: 16
+    rx_base_address:
+      base: uint
+      start: 0
+      end: 8
+
+SET_MODULATION_PARAMS:
+  type: command
+  address: 0x8B
+  size_bits_in: 24
+  fields_in:
+    mod_params:
+      base: uint
+      start: 0
+      end: 24
+
+SET_PACKET_PARAMS:
+  type: command
+  address: 0x8C
+  size_bits_in: 56
+  fields_in:
+    packet_params:
+      base: uint
+      start: 0
+      end: 56
+
+GET_RX_BUFFER_STATUS:
+  type: command
+  address: 0x17
+  size_bits_out: 24
+  fields_out:
+    status:
+      base: uint
+      start: 16
+      end: 24
+    rx_payload_length:
+      base: uint
+      start: 8
+      end: 16
+    rx_start_buffer_pointer:
+      base: uint
+      start: 0
+      end: 8
+
+GET_PACKET_STATUS:
+  type: command
+  address: 0x1D
+  size_bits_out: 48
+  fields_out:
+    status:
+      base: uint
+      start: 40
+      end: 48
+    packet_status:
+      base: uint
+      start: 0
+      end: 40
+
+GET_RSSI_INST:
+  type: command
+  address: 0x1F
+
+SET_DIO_IRQ_PARAMS:
+  type: command
+  address: 0x8D
+  size_bits_out: 64
+  fields_out:
+    irq_mask:
+      base: uint
+      start: 48
+      end: 64
+    dio1_mask:
+      base: uint
+      start: 32
+      end: 48
+    dio2_mask:
+      base: uint
+      start: 16
+      end: 32
+    dio3_mask:
+      base: uint
+      start: 0
+      end: 16
+
+GET_IRQ_STATUS:
+  type: command
+  address: 0x15
+  size_bits_out: 16
+  fields_out:
+    value:
+      base: uint
+      start: 0
+      end: 16
+
+CLR_IRQ_STATUS:
+  type: command
+  address: 0x97
+  size_bits_out: 16
+  fields_out:
+    value:
+      base: uint
+      start: 0
+      end: 16
+
+SET_REGULATOR_MODE:
+  type: command
+  address: 0x96
+
+SET_SAVE_CONTEXT:
+  type: command
+  address: 0xD5
+
+SET_AUTO_FS:
+  type: command
+  address: 0x9E
+
+SET_AUTO_TX:
+  type: command
+  address: 0x98
+
+SET_LONG_PREAMBLE:
+  type: command
+  address: 0x9B
+
+SET_RANGING_ROLE:
+  type: command
+  address: 0xA3
+
+SET_ADVANCED_RANGING:
+  type: command
+  address: 0x9A
+
+SET_FS:
+  type: command
+  address: 0xC1
+
+# 13. Register Map
+FIRMWARE_VERSIONS:
+  type: register
+  description: Firmware versions 0xB7A9 and 0xB5A9 can be read from register 0x0153
+  access: RO
+  address: 0x153
+  size_bits: 16
+  fields:
+    value:
+      base: uint
+      start: 0
+      end: 16
+      conversion:
+        name: firmware_version
+        version1: 0xB5A9
+        version2: 0xB7A9
+        other: catch_all
+
+RX_GAIN:
+  type: register
+  description: Register determining the LNA gain regime
+  access: RW
+  size_bits: 8
+  address: 0x891
+  reset_value: 0x25
+  allow_bit_overlap: true
+  fields:
+    mode:
+      base: uint
+      start: 6
+      end: 8
+      conversion:
+        name: rx_gain
+        high_sensitivity: 0b11
+        low_power: 0b00
+        other: default
+
+MANUAL_GAIN_SETTING:
+  type: register
+  access: RW
+  size_bits: 8
+  address: 0x895
+  reset_value: 0x01
+  fields:
+    gain_control:
+      base: uint
+      start: 0
+      end: 1
+      conversion:
+        name: gain_control
+        manual: 0
+        automatic: 1
+
+LNA_GAIN_VALUE:
+  type: register
+  access: RW
+  size_bits: 8
+  address: 0x89E
+  reset_value: 0x0A
+  fields:
+    setting:
+      base: uint
+      start: 0
+      end: 4
+      conversion:
+        name: gain_value
+        other: default
+        max: 13
+        max_neg2: 12
+        max_neg4: 11
+        max_neg6: 10
+        max_neg8: 9
+        max_neg12: 8
+        max_neg18: 7
+        max_neg24: 6
+        max_neg30: 5
+        max_neg36: 4
+        max_neg42: 3
+        max_neg48: 2
+        max_neg54: 1
+
+LNA_GAIN_CONTROL:
+  type: register
+  description: Enable/Disable manual LNA gain control
+  access: RW
+  size_bits: 8
+  address: 0x89F
+  reset_value: 0x4D
+  fields:
+    gain_control:
+      base: uint
+      start: 7
+      end: 8
+      conversion:
+        name: lna_gain_control
+        automatic: 0
+        manual: 1
+
+SYNCH_PEAK_ATTENUATION:
+  type: register
+  description: dB Attenuation of the peak power during synch address
+  access: RW
+  size_bits: 8
+  address: 0x8C2
+  reset_value: 0x04
+  fields:
+    attenuation:
+      base: uint
+      start: 3
+      end: 6
+      conversion:
+        name: attenuation
+        minus1: 0b000
+        minus4: 0b001
+        minus8: 0b010
+        minus16: 0b011
+        minus24: 0b100
+        minus32: 0b101
+        minus48: 0b110
+        minus64: 0b111
+
+PAYLOAD_LENGTH:
+  type: register
+  description: The length of the received LoRa payload
+  access: RW
+  size_bits: 8
+  address: 0x901
+  fields:
+    length:
+      base: uint
+      start: 0
+      end: 8
+
+LORA_HEADER_MODE:
+  type: register
+  description: Indicates the LoRa modem header mode
+  access: RW
+  size_bits: 8
+  address: 0x903
+  fields:
+    header:
+      base: bool
+      start: 7
+
+# Note: skip ranging for now
+
+# RANGING_REQUEST_ADDRESS:
+#   type: register
+#   access: RW
+#   size_bits: 32
+#   address: 0x912
+#   reset_value: 0x00000019
+
+# RANGING_DEVICE_ADDRESS:
+#   type: register
+#   access: RW
+#   size_bits: 32
+#   address: 0x916
+#   reset_value: 0x00000019
+
+# RANGING_FILTER_WINDOW_SIZE:
+#   type: register
+#   access: RO
+#   size_bits: 8
+#   address: 0x91E
+
+# RESET_RANGING_FILTER:
+#   type: register
+#   access: WO
+#   size_bits: 8
+#   address: 0x923
+
+# RANGING_RESULT_MUX:
+#   type: register
+#   access: RW
+#   size_bits: 8
+#   address: 0x924
+#   reset_value: 0x03
+
+SF_ADDITIONAL_CONFIGURATION:
+  type: register
+  description: SF range selection in LoRa mode
+  access: RW
+  size_bits: 8
+  address: 0x925
+  fields:
+    value:
+      base: uint
+      start: 0
+      end: 8
+      conversion:
+        name: F_E_C
+        SF5_6: 0x1E
+        SF7_8: 0x37
+        SF9_12: 0x32
+        other: catch_all
+
+# RANGING_CALIBRATION:
+#   type: register
+#   access: RW
+#   size_bits: 24
+#   address: 0x92B
+#   reset_value: 0x005FD2
+
+# RANGING_ID_CHECK:
+#   type: register
+#   access: RW
+#   size_bits: 8
+#   address: 0x931
+#   reset_value: 0x03
+
+FREQUENCY_ERROR_CORRECTION:
+  type: register
+  description: >
+    Crystal frequency error correction mode.
+
+    When updating SfAdditionalConfiguration, write 0x1 to this register.
+  access: RW
+  size_bits: 8
+  address: 0x93C
+  fields:
+    value:
+      base: uint
+      start: 0
+      end: 8
+
+CAD_DET_PEAK:
+  type: register
+  description: Peak-to-noise ratio decision threshold for the CAD
+  access: RW
+  size_bits: 8
+  address: 0x942
+  reset_value: 0x32
+
+LORA_SYNC_WORD:
+  type: register
+  description: LoRa sync word value
+  access: RW
+  size_bits: 16
+  address: 0x944
+  reset_value: 0x1424
+  fields:
+    msb:
+      base: uint
+      start: 12
+      end: 16
+    lsb:
+      base: uint
+      start: 4
+      end: 8
+
+# Overlaps?
+# HEADER_CRC:
+#   type: register
+#   access: RO
+#   size_bits: 8
+#   address: 0x954
+
+CODING_RATE:
+  type: register
+  description: Coding Rate in LoRa incoming packet
+  access: RO
+  size_bits: 8
+  address: 0x950
+  fields:
+    coding_rate:
+      base: uint
+      start: 4
+      end: 7
+
+FEI:
+  type: register
+  description: LoRa Frequency error indicator
+  access: RO
+  size_bits: 24
+  address: 0x954
+  fields:
+    fei:
+      base: uint
+      start: 0
+      end: 20
+
+# RANGING_RESULT:
+#   type: register
+#   access: RO
+#   size_bits: 8
+#   address: 0x961
+
+# RANGING_RSSI:
+#   type: register
+#   access: RO
+#   size_bits: 8
+#   address: 0x964
+
+# FREEZE_RANGING_RESULT:
+#   type: register
+#   access: RW
+#   size_bits: 8
+#   address: 0x97F
+
+PACKET_PREAMBLE_SETTINGS:
+  type: register
+  description: Preamble length in GFSK and Bluetooth Low Energy compatible
+  access: RW
+  size_bits: 8
+  address: 0x9C1
+  reset_value: 0x00
+
+WHITENING_INITIAL_VALUE:
+  type: register
+  description: Data whitening seed for GFSK and Bluetooth Low Energy compatible modulation
+  access: RW
+  size_bits: 8
+  address: 0x9C5
+  reset_value: 0x01
+
+CRC_POLYNOMIAL:
+  type: register
+  description: CRC Polynomial Definition for GFSK
+  access: RW
+  size_bits: 16
+  address: 0x9C6
+  reset_value: 0xFFFF
+
+CRC_POLYNOMIAL_SEED:
+  type: register
+  description: CRC Seed for Bluetooth Low Energy compatible modulation
+  access: RW
+  size_bits: 24
+  address: 0x9C7
+  reset_value: 0xFFFFFF
+
+CRC_INITIAL:
+  type: register
+  description: CRC Seed used for GFSK and FLRC modulation
+  access: RW
+  size_bits: 16
+  address: 0x9C8
+  reset_value: 0xFFFF
+
+SYNC_ADDRESS_CONTROL:
+  type: register
+  description: The number of sync word bit errors tolerated in FLRC and GFSK modes
+  access: RW
+  size_bits: 8
+  address: 0x09CD
+  reset_value: 0x80
+
+SYNC_ADDRESS1:
+  type: register
+  access: RW
+  size_bits: 40
+  address: 0x9CE
+  reset_value: 0x5555555555
+
+SYNC_ADDRESS2:
+  type: register
+  access: RW
+  size_bits: 40
+  address: 0x9D3
+  reset_value: 0x5555555555
+
+SYNC_ADDRESS3:
+  type: register
+  access: RW
+  size_bits: 40
+  address: 0x9D8
+  reset_value: 0x5555555555
