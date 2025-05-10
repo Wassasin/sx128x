@@ -1,8 +1,20 @@
 config:
   default_byte_order: LE
+  buffer_address_type: u8
   command_address_type: u8
   register_address_type: u16
   defmt_feature: "defmt-1"
+
+# 11.5 Data Buffer Operations
+TX_BUFFER:
+  type: buffer
+  address: 0x00
+  access: WO
+
+RX_BUFFER:
+  type: buffer
+  address: 0x80
+  access: RO
 
 # 12. List of Commands
 GET_STATUS:
@@ -154,7 +166,7 @@ SET_PACKET_TYPE:
       conversion:
         name: packet_type
         gfsk: 0x00
-        lora: 0x01
+        lo_ra: 0x01
         ranging: 0x02
         flrc: 0x03
         BLE: 0x04
@@ -292,8 +304,8 @@ GET_RSSI_INST:
 SET_DIO_IRQ_PARAMS:
   type: command
   address: 0x8D
-  size_bits_out: 64
-  fields_out:
+  size_bits_in: 64
+  fields_in:
     irq_mask:
       base: uint
       start: 48
@@ -324,8 +336,8 @@ GET_IRQ_STATUS:
 CLR_IRQ_STATUS:
   type: command
   address: 0x97
-  size_bits_out: 16
-  fields_out:
+  size_bits_in: 16
+  fields_in:
     value:
       base: uint
       start: 0

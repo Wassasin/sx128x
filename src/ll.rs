@@ -1,6 +1,8 @@
 use core::convert::Infallible;
 
-use device_driver::{AsyncCommandInterface, AsyncRegisterInterface};
+use device_driver::{
+    AsyncBufferInterface, AsyncCommandInterface, AsyncRegisterInterface, BufferInterfaceError,
+};
 use embedded_hal::spi::Operation;
 use embedded_hal_async::{digital::Wait, spi::SpiDevice};
 
@@ -79,6 +81,56 @@ where
         self.spi.transaction(&mut operations).await?;
         let _ = self.busy.wait_for_low().await;
         Ok(())
+    }
+}
+
+impl<SPI, BUSY> BufferInterfaceError for Interface<SPI, BUSY>
+where
+    SPI: SpiDevice,
+{
+    type Error = SPI::Error;
+}
+
+impl<SPI, BUSY> AsyncBufferInterface for Interface<SPI, BUSY>
+where
+    SPI: SpiDevice,
+    BUSY: Wait<Error = Infallible>,
+{
+    type AddressType = u8;
+
+    async fn write(
+        &mut self,
+        address: Self::AddressType,
+        buf: &[u8],
+    ) -> Result<usize, Self::Error> {
+        let command = [0x1A, address];
+        let mut operations = [Operation::Write(&command), Operation::Write(buf)];
+
+        let _ = self.busy.wait_for_low().await;
+        self.spi.transaction(&mut operations).await?;
+        let _ = self.busy.wait_for_low().await;
+
+        Ok(buf.len())
+    }
+
+    async fn flush(&mut self, _address: Self::AddressType) -> Result<(), Self::Error> {
+        // Do nothing
+        Ok(())
+    }
+
+    async fn read(
+        &mut self,
+        address: Self::AddressType,
+        buf: &mut [u8],
+    ) -> Result<usize, Self::Error> {
+        let command = [0x1B, address];
+        let mut operations = [Operation::Write(&command), Operation::Read(buf)];
+
+        let _ = self.busy.wait_for_low().await;
+        self.spi.transaction(&mut operations).await?;
+        let _ = self.busy.wait_for_low().await;
+
+        Ok(buf.len())
     }
 }
 
