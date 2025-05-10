@@ -75,7 +75,7 @@ fn command() {
 
 #[test]
 fn register() {
-    let expectations = [reg_r(0x153, &[0xB5, 0xA9])];
+    let expectations = [reg_r(0x153, &[0xA9, 0xB5])];
     let mut spi = Mock::new(expectations.iter().flatten());
     let mut ll = ll::Device::new(ll::Interface::new(&mut spi, MockBusy));
 

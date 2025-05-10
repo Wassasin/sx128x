@@ -9,6 +9,32 @@ GET_STATUS:
   type: command
   address: 0xC0
   size_bits_out: 8
+  fields_out:
+    circuit_mode:
+      base: uint
+      start: 5
+      end: 8
+      conversion:
+        name: circuit_mode
+        stdby_rc: 0x2
+        stdby_xosc: 0x3
+        fs: 0x4
+        rx: 0x5
+        tx: 0x6
+        unknown: default
+    command_status:
+      base: uint
+      start: 2
+      end: 5
+      conversion:
+        name: command_status
+        command_success: 0x1
+        data_available: 0x2
+        command_timeout: 0x3
+        command_error: 0x4
+        command_failure: 0x5
+        command_done: 0x6
+        unknown: default
 
 SET_SLEEP:
   type: command
@@ -157,7 +183,7 @@ SET_TX_PARAMS:
     power:
       base: uint
       start: 8
-      end: 16
+      end: 13
     ramp_time:
       base: uint
       start: 0

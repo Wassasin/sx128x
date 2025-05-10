@@ -83,7 +83,7 @@ where
 }
 
 impl<SPI, BUSY> Interface<SPI, BUSY> {
-    pub fn new(spi: SPI, busy: BUSY) -> Self {
+    pub const fn new(spi: SPI, busy: BUSY) -> Self {
         Self { spi, busy }
     }
 
