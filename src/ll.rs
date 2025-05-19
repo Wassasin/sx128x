@@ -28,11 +28,24 @@ where
         output: &mut [u8],
     ) -> Result<(), Self::Error> {
         let command = [address];
-        let mut operations = [
-            Operation::Write(&command),
-            Operation::Write(input),
-            Operation::Read(output),
-        ];
+
+        let mut operations = if input.len() > 0 && output.len() == 0 {
+            // Write operation
+            [
+                Operation::Write(&command),
+                Operation::Write(input),
+                Operation::Read(output), // This is empty.
+            ]
+        } else if input.len() == 0 && output.len() > 0 {
+            // Read operation
+            [
+                Operation::Write(&command),
+                Operation::Write(&[0x00]),
+                Operation::Read(output),
+            ]
+        } else {
+            panic!("Neither read nor write command");
+        };
 
         let _ = self.busy.wait_for_low().await;
         self.spi.transaction(&mut operations).await?;

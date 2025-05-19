@@ -12,7 +12,7 @@ pub use ll::RampTime;
 use lora::{LoRaModemParams, LoRaModulationParams, LoRaPacketParams};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Frequency {
     raw: [u8; 3],
 }
@@ -46,7 +46,7 @@ impl Default for Frequency {
 }
 
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TxParams {
     pub power: u8,
     pub ramp_time: ll::RampTime,
@@ -97,8 +97,8 @@ impl<
 
     pub async fn configure(&mut self, modem: LoRaModemParams) -> Result<(), E> {
         self.set_standbyrc().await?;
-        self.set_packet_type(PacketType::LoRa).await?;
         self.set_rf_frequency(modem.frequency).await?;
+        self.set_packet_type(PacketType::LoRa).await?;
         self.set_buffer_base_address().await?;
         self.set_modulation_params(modem.modulation_params).await?;
         self.set_packet_params(modem.packet_params).await?;
@@ -109,25 +109,48 @@ impl<
     pub async fn send(&mut self, buf: &[u8]) -> Result<(), E> {
         // TODO bounds check.
         self.ll.tx_buffer().write_all_async(buf).await?;
+        info!("Buffer written");
 
-        let irq = Irq::TxDone.bits();
+        let status = self.ll.get_status().dispatch_async().await?;
+        info!("Status: {}", status);
+
+        let irq = Irq::TxDone;
 
         self.ll
             .set_dio_irq_params()
             .dispatch_async(|cmd| {
-                cmd.set_irq_mask(irq);
-                cmd.set_dio_1_mask(irq);
+                cmd.set_irq_mask(irq.bits());
+                cmd.set_dio_1_mask(irq.bits());
+                cmd.set_dio_2_mask(Irq::empty().bits());
+                cmd.set_dio_3_mask(Irq::empty().bits());
             })
             .await?;
 
+        info!("DIO set");
         self.ll
             .set_tx()
             .dispatch_async(|cmd| cmd.set_period_base_count(ll::TxTimeoutBaseCount::SingleMode))
             .await?;
+        info!("Tx mode set");
+
+        let status = self.ll.get_status().dispatch_async().await?;
+        info!("Status: {}", status);
+
+        let status = self.ll.get_status().dispatch_async().await?;
+        info!("Status: {}", status);
+        let status = self.ll.get_status().dispatch_async().await?;
+        info!("Status: {}", status);
+        let status = self.ll.get_status().dispatch_async().await?;
+        info!("Status: {}", status);
+        let status = self.ll.get_status().dispatch_async().await?;
+        info!("Status: {}", status);
 
         let _ = self.dio1.wait_for_high().await;
-
+        info!("DIO high");
         let irqs = self.ll.get_irq_status().dispatch_async().await?;
+
+        info!("IRQS {}", irqs);
+
         self.ll
             .clr_irq_status()
             .dispatch_async(|cmd| {
@@ -199,22 +222,18 @@ impl<
         let mut buf = [0u8; 4];
         buf[1..].copy_from_slice(&modulation_params.as_bytes());
         let modulation_params = u32::from_le_bytes(buf);
-
         self.ll
             .set_modulation_params()
             .dispatch_async(|cmd| cmd.set_mod_params(modulation_params))
             .await?;
-
         self.ll
             .sf_additional_configuration()
             .modify_async(|reg| reg.set_value(fec))
             .await?;
-
         self.ll
             .frequency_error_correction()
             .write_async(|reg| reg.set_value(0x01))
             .await?;
-
         Ok(())
     }
 
@@ -234,7 +253,7 @@ impl<
     async fn set_rf_frequency(&mut self, frequency: Frequency) -> Result<(), E> {
         let mut buf = [0u8; 4];
         buf[1..].copy_from_slice(&frequency.as_bytes());
-        let frequency = u32::from_le_bytes(buf);
+        let frequency = u32::from_be_bytes(buf);
 
         self.ll
             .set_rf_frequency()

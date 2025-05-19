@@ -22,3 +22,9 @@ bitflags! {
         const PreambleDetected = (1 << 15);
     }
 }
+
+impl Irq {
+    pub fn to_reg(self) -> u16 {
+        self.bits()
+    }
+}

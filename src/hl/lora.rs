@@ -1,7 +1,7 @@
 use super::{Frequency, TxParams};
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LoRaSpreadingFactor {
     Sf5 = 0x50,
     Sf6 = 0x60,
@@ -15,7 +15,7 @@ pub enum LoRaSpreadingFactor {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LoRaBandwidth {
     #[default]
     Bw200kHz = 0x34,
@@ -25,7 +25,7 @@ pub enum LoRaBandwidth {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LoRaCodingRate {
     #[default]
     Cr4_5 = 0x01,
@@ -38,7 +38,7 @@ pub enum LoRaCodingRate {
 }
 
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct LoRaModulationParams {
     pub spreading_factor: LoRaSpreadingFactor,
     pub bandwidth: LoRaBandwidth,
@@ -56,7 +56,7 @@ impl LoRaModulationParams {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LoRaCrc {
     #[default]
     Enabled = 0x20,
@@ -64,7 +64,7 @@ pub enum LoRaCrc {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LoRaIq {
     #[default]
     Normal = 0x40,
@@ -72,7 +72,7 @@ pub enum LoRaIq {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LoRaHeader {
     #[default]
     Explicit = 0x00,
@@ -80,7 +80,7 @@ pub enum LoRaHeader {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct LoRaPacketParams {
     pub preamble_length: LoRaPreambleLength,
     pub header_type: LoRaHeader,
@@ -91,7 +91,7 @@ pub struct LoRaPacketParams {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct LoRaPreambleLength {
     pub mantissa: u8,
     pub exponenta: u8,
@@ -127,7 +127,7 @@ impl LoRaPacketParams {
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
-#[cfg_attr(feature = "defmt-1", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct LoRaModemParams {
     pub frequency: Frequency,
     pub tx_params: TxParams,
