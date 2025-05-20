@@ -153,3 +153,52 @@ fn capture_tx() {
 
     spi.done();
 }
+
+/// Reception test based on a capture of the competitor radio_sx128x crate working on a test device.
+#[test]
+fn capture_rx() {
+    let expectations = [
+        cmd_w(0x8F, &[0x00, 0x00]),
+        cmd_w(0x8D, &[0x40, 0x22, 0x40, 0x22, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x82, &[0x00, 0x00, 0x00]),
+        // After polling for a while, we got data!
+        cmd_r(0x15, &[0x00, 0x02]),
+        cmd_r(0x1D, &[0x6A, 0x15, 0x32, 0x00, 0x00]),
+        cmd_r(0x17, &[0x10, 0x00]),
+        buf_r(0x00, &[0x00; 16]),
+        cmd_w(0x97, &[0x00, 0x02]),
+        // Reset to listen again, but get a spurious result
+        cmd_w(0x8F, &[0x00, 0x00]),
+        cmd_w(0x8D, &[0x40, 0x22, 0x40, 0x22, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x82, &[0x00, 0x00, 0x00]),
+        cmd_r(0x15, &[0x00, 0x00]),
+        cmd_w(0x97, &[0x00, 0x00]),
+        // Reset to listen again, but get an error
+        cmd_w(0x8F, &[0x00, 0x00]),
+        cmd_w(0x8D, &[0x40, 0x22, 0x40, 0x22, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x82, &[0x00, 0x00, 0x00]),
+        cmd_r(0x15, &[0x00, 0x10]),
+        cmd_w(0x97, &[0x00, 0x10]),
+    ];
+
+    let mut spi = Mock::new(expectations.iter().flatten());
+    let mut hl = hl::SX128X::new(&mut spi, MockWait, MockWait, MockOutput, MockDelay);
+
+    embassy_futures::block_on(async {
+        let mut buf = [0xffu8; 32];
+
+        {
+            let len = hl.receive(&mut buf).await.unwrap().unwrap();
+            let buf = &buf[0..len];
+            assert_eq!(buf, [0x00; 16]);
+        }
+
+        let res = hl.receive(&mut buf).await.unwrap();
+        assert!(res.is_none());
+
+        let res = hl.receive(&mut buf).await.unwrap();
+        assert!(res.is_none());
+    });
+
+    spi.done();
+}

@@ -153,9 +153,11 @@ impl<
 
         let _ = self.dio1.wait_for_high().await;
         info!("DIO high");
-        let irqs = self.ll.get_irq_status().dispatch_async().await?;
 
+        let irqs = self.ll.get_irq_status().dispatch_async().await?;
         info!("IRQS {}", irqs);
+
+        // TODO match IRQs to TxDone
 
         self.ll
             .clr_irq_status()
@@ -165,15 +167,60 @@ impl<
             .await
     }
 
-    pub async fn receive(&mut self) -> Result<(), E> {
-        // SetDioIrqParams
-        // SetRx
-        // GetPacketStatus
-        // ClrIrqStatus
-        // GetRxBufferStatus
-        // ReadBuffer
+    // TODO packet status
+    pub async fn receive(&mut self, buf: &mut [u8]) -> Result<Option<usize>, E> {
+        self.set_buffer_base_address().await?;
 
-        todo!()
+        // TODO mechanism to deal with Irq::PreambleDetected.
+        // TODO mechanism to deal with Irq::HeaderError.
+        let irq = Irq::RxDone | Irq::RxTxTimeout | Irq::HeaderError;
+
+        self.ll
+            .set_dio_irq_params()
+            .dispatch_async(|cmd| {
+                cmd.set_irq_mask(irq.bits());
+                cmd.set_dio_1_mask(irq.bits());
+            })
+            .await?;
+
+        self.ll
+            .set_rx()
+            .dispatch_async(|cmd| {
+                cmd.set_period_base(ll::RxTimeoutStep::Step15Us625);
+                cmd.set_period_base_count(ll::RxTimeoutBaseCount::SingleMode);
+            })
+            .await?;
+
+        let _ = self.dio1.wait_for_high().await;
+
+        let irqs = self.ll.get_irq_status().dispatch_async().await?;
+        info!("IRQS {}", irqs);
+
+        let irqs_value = Irq::from_bits_retain(irqs.value());
+        let result = if irqs_value.contains(Irq::RxDone) {
+            let _packet_status = self.ll.get_packet_status().dispatch_async().await?;
+            let rx_buffer_status = self.ll.get_rx_buffer_status().dispatch_async().await?;
+
+            assert_eq!(rx_buffer_status.rx_start_buffer_pointer(), 0);
+
+            let len = rx_buffer_status.rx_payload_length() as usize;
+            self.ll.buffer().read_async(&mut buf[0..len]).await?;
+
+            // TODO check Error Packet Status byte.
+
+            Some(len)
+        } else {
+            None
+        };
+
+        self.ll
+            .clr_irq_status()
+            .dispatch_async(|cmd| {
+                cmd.set_value(irqs.value());
+            })
+            .await?;
+
+        Ok(result)
     }
 }
 
