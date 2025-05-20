@@ -50,7 +50,7 @@ fn reg_w(reg: u16, in_array: &[u8]) -> Vec<Transaction<u8>> {
 fn buf_r(offset: u8, out_array: &[u8]) -> Vec<Transaction<u8>> {
     vec![
         Transaction::transaction_start(),
-        Transaction::write_vec([0x1B, offset].to_vec()),
+        Transaction::write_vec([0x1B, offset, 0x00].to_vec()),
         Transaction::read_vec(out_array.to_vec()),
         Transaction::transaction_end(),
     ]

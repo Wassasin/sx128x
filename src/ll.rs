@@ -136,7 +136,7 @@ where
         address: Self::AddressType,
         buf: &mut [u8],
     ) -> Result<usize, Self::Error> {
-        let command = [0x1B, address];
+        let command = [0x1B, address, 0x00];
         let mut operations = [Operation::Write(&command), Operation::Read(buf)];
 
         let _ = self.busy.wait_for_low().await;
