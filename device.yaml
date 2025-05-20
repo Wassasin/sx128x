@@ -6,15 +6,10 @@ config:
   defmt_feature: "defmt"
 
 # 11.5 Data Buffer Operations
-TX_BUFFER:
+BUFFER:
   type: buffer
   address: 0x00
-  access: WO
-
-RX_BUFFER:
-  type: buffer
-  address: 0x80
-  access: RO
+  access: RW
 
 # 12. List of Commands
 GET_STATUS:
@@ -265,12 +260,8 @@ SET_PACKET_PARAMS:
 GET_RX_BUFFER_STATUS:
   type: command
   address: 0x17
-  size_bits_out: 24
+  size_bits_out: 16
   fields_out:
-    status:
-      base: uint
-      start: 16
-      end: 24
     rx_payload_length:
       base: uint
       start: 8
@@ -283,13 +274,9 @@ GET_RX_BUFFER_STATUS:
 GET_PACKET_STATUS:
   type: command
   address: 0x1D
-  size_bits_out: 48
+  size_bits_out: 40
   fields_out:
-    status:
-      base: uint
-      start: 40
-      end: 48
-    packet_status:
+    value:
       base: uint
       start: 0
       end: 40

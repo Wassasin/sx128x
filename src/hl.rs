@@ -123,7 +123,7 @@ impl<
         self.set_buffer_base_address().await?;
 
         // TODO bounds check.
-        self.ll.tx_buffer().write_all_async(buf).await?;
+        self.ll.buffer().write_all_async(buf).await?;
         info!("Buffer written");
 
         let status = self.ll.get_status().dispatch_async().await?;

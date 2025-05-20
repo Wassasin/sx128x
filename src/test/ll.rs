@@ -62,9 +62,9 @@ fn set_dio() {
     spi.done();
 }
 
-/// Test based on a capture of the competitor radio_sx128x crate working on a test device.
+/// Configuration test based on a capture of the competitor radio_sx128x crate working on a test device.
 #[test]
-fn capture_tx() {
+fn capture_configure() {
     let expectations = [
         reg_r(0x153, &[0xA9, 0xB7]),
         cmd_w(0x80, &[0x00]),
@@ -76,19 +76,6 @@ fn capture_tx() {
         cmd_w(0x8E, &[0x16, 0xE0]),
         cmd_w(0x89, &[0x3F]),
         // After a while
-        cmd_r(0xC0, &[0x43]),
-        cmd_w(0x86, &[0xB9, 0x00, 0x00]),
-        cmd_w(0x8C, &[0x08, 0x00, 0x20, 0x20, 0x40, 0x00, 0x00]),
-        cmd_w(0x8F, &[0x00, 0x00]),
-        buf_w(0x00, &[0x00; 16]),
-        cmd_w(0x8D, &[0x40, 0x41, 0x40, 0x41, 0x00, 0x00, 0x00, 0x00]),
-        cmd_w(0x83, &[0x00, 0x00, 0x00]),
-        cmd_r(0xC0, &[0xC3]),
-        cmd_r(0x15, &[0x00, 0x00]),
-        cmd_r(0xC0, &[0xC3]),
-        // After polling for a while
-        cmd_r(0x15, &[0x00, 0x01]),
-        cmd_w(0x97, &[0x00, 0x01]),
         cmd_r(0xC0, &[0x43]),
     ];
     let mut spi = Mock::new(expectations.iter().flatten());
@@ -152,7 +139,33 @@ fn capture_tx() {
             let status = ll.get_status().dispatch_async().await.unwrap();
             assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::StdbyRc));
         }
+    });
 
+    spi.done();
+}
+
+/// Transmission test based on a capture of the competitor radio_sx128x crate working on a test device.
+#[test]
+fn capture_tx() {
+    let expectations = [
+        cmd_w(0x86, &[0xB9, 0x00, 0x00]),
+        cmd_w(0x8C, &[0x08, 0x00, 0x20, 0x20, 0x40, 0x00, 0x00]),
+        cmd_w(0x8F, &[0x00, 0x00]),
+        buf_w(0x00, &[0x00; 16]),
+        cmd_w(0x8D, &[0x40, 0x41, 0x40, 0x41, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x83, &[0x00, 0x00, 0x00]),
+        cmd_r(0xC0, &[0xC3]),
+        cmd_r(0x15, &[0x00, 0x00]),
+        cmd_r(0xC0, &[0xC3]),
+        // After polling for a while
+        cmd_r(0x15, &[0x00, 0x01]),
+        cmd_w(0x97, &[0x00, 0x01]),
+        cmd_r(0xC0, &[0x43]),
+    ];
+    let mut spi = Mock::new(expectations.iter().flatten());
+    let mut ll = ll::Device::new(ll::Interface::new(&mut spi, MockWait));
+
+    embassy_futures::block_on(async {
         ll.set_rf_frequency()
             .dispatch_async(|cmd| cmd.set_value(0xB90000)) // 2_405_000_000
             .await
@@ -172,7 +185,7 @@ fn capture_tx() {
             .unwrap();
         {
             let mut buf = [0x00; 16];
-            ll.tx_buffer().write_all_async(&mut buf).await.unwrap();
+            ll.buffer().write_all_async(&mut buf).await.unwrap();
         }
 
         ll.set_dio_irq_params()
@@ -221,6 +234,178 @@ fn capture_tx() {
             let status = ll.get_status().dispatch_async().await.unwrap();
             assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::StdbyRc));
         }
+    });
+
+    spi.done();
+}
+
+/// Reception test based on a capture of the competitor radio_sx128x crate working on a test device.
+#[test]
+fn capture_rx() {
+    let expectations = [
+        cmd_w(0x86, &[0xB9, 0x00, 0x00]),
+        cmd_w(0x8C, &[0x08, 0x00, 0x20, 0x20, 0x40, 0x00, 0x00]),
+        cmd_w(0x8F, &[0x00, 0x00]),
+        cmd_w(0x8D, &[0xC0, 0x7E, 0xC0, 0x7E, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x82, &[0x00, 0x00, 0x00]),
+        cmd_r(0xC0, &[0xA3]),
+        cmd_r(0x15, &[0x00, 0x00]),
+        // After polling for a while
+        cmd_r(0x15, &[0x80, 0x00]),
+        cmd_w(0x97, &[0x80, 0x00]),
+        // After polling for a while
+        cmd_r(0x15, &[0x00, 0x10]),
+        cmd_w(0x97, &[0x00, 0x10]),
+        // After polling for a while, we got data!
+        cmd_r(0x15, &[0x00, 0x02]),
+        cmd_w(0x97, &[0x00, 0x02]),
+        cmd_r(0x17, &[0x10, 0x00]),
+        buf_r(0x00, &[0x00; 16]),
+        cmd_r(0x1D, &[0x6A, 0x15, 0x32, 0x00, 0x00]),
+        // Reset to listen again
+        cmd_w(0x80, &[0x00]),
+        cmd_r(0xC0, &[0x43]),
+        cmd_w(0x8F, &[0x00, 0x00]),
+        cmd_w(0x8C, &[0x08, 0x00, 0x20, 0x20, 0x40, 0x00, 0x00]),
+        cmd_w(0x8D, &[0xC0, 0x7E, 0xC0, 0x7E, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x82, &[0x00, 0x00, 0x00]),
+    ];
+    let mut spi = Mock::new(expectations.iter().flatten());
+    let mut ll = ll::Device::new(ll::Interface::new(&mut spi, MockWait));
+
+    embassy_futures::block_on(async {
+        ll.set_rf_frequency()
+            .dispatch_async(|cmd| cmd.set_value(0xB90000)) // 2_405_000_000
+            .await
+            .unwrap();
+
+        ll.set_packet_params()
+            .dispatch_async(|cmd| cmd.set_packet_params(0x08002020400000))
+            .await
+            .unwrap();
+
+        ll.set_buffer_base_address()
+            .dispatch_async(|cmd| {
+                cmd.set_rx_base_address(0x00);
+                cmd.set_tx_base_address(0x00);
+            })
+            .await
+            .unwrap();
+
+        ll.set_dio_irq_params()
+            .dispatch_async(|cmd| {
+                cmd.set_irq_mask(0xC07E);
+                cmd.set_dio_1_mask(0xC07E);
+            })
+            .await
+            .unwrap();
+
+        ll.set_rx()
+            .dispatch_async(|cmd| {
+                cmd.set_period_base(ll::RxTimeoutStep::Step15Us625);
+                cmd.set_period_base_count(ll::RxTimeoutBaseCount::SingleMode);
+            })
+            .await
+            .unwrap();
+
+        {
+            let status = ll.get_status().dispatch_async().await.unwrap();
+            assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::Rx));
+        }
+
+        {
+            let irq_status = ll.get_irq_status().dispatch_async().await.unwrap();
+            assert_eq!(irq_status.value(), 0x0000u16);
+        }
+
+        // After polling for a while
+        {
+            let irq_status = ll.get_irq_status().dispatch_async().await.unwrap();
+            assert_eq!(irq_status.value(), 0x8000u16);
+        }
+
+        ll.clr_irq_status()
+            .dispatch_async(|cmd| cmd.set_value(0x8000u16))
+            .await
+            .unwrap();
+
+        // After polling for a while
+        {
+            let irq_status = ll.get_irq_status().dispatch_async().await.unwrap();
+            assert_eq!(irq_status.value(), 0x0010u16);
+        }
+
+        ll.clr_irq_status()
+            .dispatch_async(|cmd| cmd.set_value(0x0010u16))
+            .await
+            .unwrap();
+
+        // After polling for a while
+        {
+            let irq_status = ll.get_irq_status().dispatch_async().await.unwrap();
+            assert_eq!(irq_status.value(), 0x0002u16);
+        }
+
+        ll.clr_irq_status()
+            .dispatch_async(|cmd| cmd.set_value(0x0002u16))
+            .await
+            .unwrap();
+
+        {
+            let rx_buffer_status = ll.get_rx_buffer_status().dispatch_async().await.unwrap();
+            assert_eq!(rx_buffer_status.rx_payload_length(), 16);
+            assert_eq!(rx_buffer_status.rx_start_buffer_pointer(), 0);
+        }
+
+        {
+            let mut buf = [0xffu8; 16];
+            ll.buffer().read_exact_async(&mut buf).await.unwrap();
+            assert_eq!(buf, [0; 16]);
+        }
+
+        {
+            let packet_status = ll.get_packet_status().dispatch_async().await.unwrap();
+            assert_eq!(packet_status.value(), 0x6A15320000);
+        }
+
+        ll.set_standby()
+            .dispatch_async(|cmd| cmd.set_standby_config(ll::StandbyConfig::StdbyRc))
+            .await
+            .unwrap();
+
+        {
+            let status = ll.get_status().dispatch_async().await.unwrap();
+            assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::StdbyRc));
+        }
+
+        ll.set_buffer_base_address()
+            .dispatch_async(|cmd| {
+                cmd.set_rx_base_address(0x00);
+                cmd.set_tx_base_address(0x00);
+            })
+            .await
+            .unwrap();
+
+        ll.set_packet_params()
+            .dispatch_async(|cmd| cmd.set_packet_params(0x08002020400000))
+            .await
+            .unwrap();
+
+        ll.set_dio_irq_params()
+            .dispatch_async(|cmd| {
+                cmd.set_irq_mask(0xC07E);
+                cmd.set_dio_1_mask(0xC07E);
+            })
+            .await
+            .unwrap();
+
+        ll.set_rx()
+            .dispatch_async(|cmd| {
+                cmd.set_period_base(ll::RxTimeoutStep::Step15Us625);
+                cmd.set_period_base_count(ll::RxTimeoutBaseCount::SingleMode);
+            })
+            .await
+            .unwrap();
     });
 
     spi.done();
