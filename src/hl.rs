@@ -99,14 +99,29 @@ impl<
         self.set_standbyrc().await?;
         self.set_rf_frequency(modem.frequency).await?;
         self.set_packet_type(PacketType::LoRa).await?;
-        self.set_buffer_base_address().await?;
         self.set_modulation_params(modem.modulation_params).await?;
         self.set_packet_params(modem.packet_params).await?;
         self.set_tx_params(modem.tx_params).await?;
         Ok(())
     }
 
+    pub async fn calibrate(&mut self) -> Result<(), E> {
+        self.ll
+            .calibrate()
+            .dispatch_async(|cmd| {
+                cmd.set_rc_64_k_enable(true);
+                cmd.set_rc_13_m_enable_enable(true);
+                cmd.set_pll_enable(true);
+                cmd.set_adc_pulse_enable(true);
+                cmd.set_adc_bulk_n_enable(true);
+                cmd.set_adc_bulk_p_enable(true);
+            })
+            .await
+    }
+
     pub async fn send(&mut self, buf: &[u8]) -> Result<(), E> {
+        self.set_buffer_base_address().await?;
+
         // TODO bounds check.
         self.ll.tx_buffer().write_all_async(buf).await?;
         info!("Buffer written");
@@ -114,7 +129,7 @@ impl<
         let status = self.ll.get_status().dispatch_async().await?;
         info!("Status: {}", status);
 
-        let irq = Irq::TxDone;
+        let irq = Irq::TxDone | Irq::RxTxTimeout | Irq::CrcError; // TODO why CRC_ERROR?
 
         self.ll
             .set_dio_irq_params()
@@ -133,15 +148,6 @@ impl<
             .await?;
         info!("Tx mode set");
 
-        let status = self.ll.get_status().dispatch_async().await?;
-        info!("Status: {}", status);
-
-        let status = self.ll.get_status().dispatch_async().await?;
-        info!("Status: {}", status);
-        let status = self.ll.get_status().dispatch_async().await?;
-        info!("Status: {}", status);
-        let status = self.ll.get_status().dispatch_async().await?;
-        info!("Status: {}", status);
         let status = self.ll.get_status().dispatch_async().await?;
         info!("Status: {}", status);
 
@@ -199,7 +205,7 @@ impl<
             .set_buffer_base_address()
             .dispatch_async(|cmd| {
                 cmd.set_tx_base_address(0x00);
-                cmd.set_rx_base_address(0x80);
+                cmd.set_rx_base_address(0x00);
             })
             .await
     }
@@ -221,7 +227,7 @@ impl<
 
         let mut buf = [0u8; 4];
         buf[1..].copy_from_slice(&modulation_params.as_bytes());
-        let modulation_params = u32::from_le_bytes(buf);
+        let modulation_params = u32::from_be_bytes(buf);
         self.ll
             .set_modulation_params()
             .dispatch_async(|cmd| cmd.set_mod_params(modulation_params))
@@ -240,7 +246,7 @@ impl<
     async fn set_packet_params(&mut self, packet_params: LoRaPacketParams) -> Result<(), E> {
         let mut buf = [0u8; 8];
         buf[1..].copy_from_slice(&packet_params.as_bytes());
-        let packet_params = u64::from_le_bytes(buf);
+        let packet_params = u64::from_be_bytes(buf);
 
         self.ll
             .set_packet_params()

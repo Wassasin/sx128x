@@ -48,16 +48,15 @@ fn set_dio() {
     embassy_futures::block_on(async {
         let irq = Irq::TxDone;
 
-        unwrap!(
-            ll.set_dio_irq_params()
-                .dispatch_async(|cmd| {
-                    cmd.set_irq_mask(irq.to_reg());
-                    cmd.set_dio_1_mask(irq.to_reg());
-                    cmd.set_dio_2_mask(Irq::empty().bits());
-                    cmd.set_dio_3_mask(Irq::empty().bits());
-                })
-                .await
-        );
+        ll.set_dio_irq_params()
+            .dispatch_async(|cmd| {
+                cmd.set_irq_mask(irq.to_reg());
+                cmd.set_dio_1_mask(irq.to_reg());
+                cmd.set_dio_2_mask(Irq::empty().bits());
+                cmd.set_dio_3_mask(Irq::empty().bits());
+            })
+            .await
+            .unwrap();
     });
 
     spi.done();
@@ -78,6 +77,7 @@ fn capture_tx() {
         cmd_w(0x89, &[0x3F]),
         // After a while
         cmd_r(0xC0, &[0x43]),
+        cmd_w(0x86, &[0xB9, 0x00, 0x00]),
         cmd_w(0x8C, &[0x08, 0x00, 0x20, 0x20, 0x40, 0x00, 0x00]),
         cmd_w(0x8F, &[0x00, 0x00]),
         buf_w(0x00, &[0x00; 16]),
@@ -150,8 +150,13 @@ fn capture_tx() {
 
         {
             let status = ll.get_status().dispatch_async().await.unwrap();
-            assert_eq!(status.circuit_mode(), ll::CircuitMode::StdbyRc);
+            assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::StdbyRc));
         }
+
+        ll.set_rf_frequency()
+            .dispatch_async(|cmd| cmd.set_value(0xB90000)) // 2_405_000_000
+            .await
+            .unwrap();
 
         ll.set_packet_params()
             .dispatch_async(|cmd| cmd.set_packet_params(0x08002020400000))
@@ -188,7 +193,7 @@ fn capture_tx() {
 
         {
             let status = ll.get_status().dispatch_async().await.unwrap();
-            assert_eq!(status.circuit_mode(), ll::CircuitMode::Tx);
+            assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::Tx));
         }
 
         {
@@ -198,7 +203,7 @@ fn capture_tx() {
 
         {
             let status = ll.get_status().dispatch_async().await.unwrap();
-            assert_eq!(status.circuit_mode(), ll::CircuitMode::Tx);
+            assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::Tx));
         }
 
         // After polling for a while
@@ -214,7 +219,7 @@ fn capture_tx() {
 
         {
             let status = ll.get_status().dispatch_async().await.unwrap();
-            assert_eq!(status.circuit_mode(), ll::CircuitMode::StdbyRc);
+            assert_eq!(status.circuit_mode(), Ok(ll::CircuitMode::StdbyRc));
         }
     });
 

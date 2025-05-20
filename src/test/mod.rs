@@ -38,6 +38,15 @@ fn reg_r(reg: u16, out_array: &[u8]) -> Vec<Transaction<u8>> {
     ]
 }
 
+fn reg_w(reg: u16, in_array: &[u8]) -> Vec<Transaction<u8>> {
+    vec![
+        Transaction::transaction_start(),
+        Transaction::write_vec([[0x18].as_slice(), &reg.to_be_bytes()].concat().to_vec()),
+        Transaction::write_vec(in_array.to_vec()),
+        Transaction::transaction_end(),
+    ]
+}
+
 fn buf_w(offset: u8, in_array: &[u8]) -> Vec<Transaction<u8>> {
     vec![
         Transaction::transaction_start(),

@@ -18,5 +18,5 @@ embassy-futures = "0.1.1"
 embedded-hal-mock = { version = "0.11", features = ["embedded-hal-async"] }
 
 [features]
-defmt = ["dep:defmt"]
+defmt = ["dep:defmt", "device-driver/defmt-03"]
 log = ["dep:log"]
