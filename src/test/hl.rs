@@ -41,7 +41,7 @@ fn frequency() {
 
 /// Test based on a capture of the competitor radio_sx128x crate working on a test device.
 #[test]
-fn capture_tx() {
+fn capture_configure() {
     let expectations = [
         reg_r(0x153, &[0xA9, 0xB7]),
         cmd_w(0x80, &[0x00]),
@@ -68,16 +68,6 @@ fn capture_tx() {
         reg_w(0x93C, &[0x01]),
         cmd_w(0x8C, &[0x08, 0x00, 0x20, 0x20, 0x40, 0x00, 0x00]),
         cmd_w(0x8E, &[0x16, 0xE0]),
-        cmd_w(0x8F, &[0x00, 0x00]),
-        buf_w(0x00, &[0x00; 16]),
-        cmd_r(0xC0, &[0xC3]),
-        cmd_w(0x8D, &[0x40, 0x41, 0x40, 0x41, 0x00, 0x00, 0x00, 0x00]),
-        cmd_w(0x83, &[0x00, 0x00, 0x00]),
-        cmd_r(0xC0, &[0xC3]),
-        // // After polling for a while
-        cmd_r(0x15, &[0x00, 0x01]),
-        cmd_w(0x97, &[0x00, 0x01]),
-        cmd_r(0xC0, &[0x43]),
     ];
     let mut spi = Mock::new(expectations.iter().flatten());
     let mut hl = hl::SX128X::new(&mut spi, MockWait, MockWait, MockOutput, MockDelay);
@@ -129,7 +119,30 @@ fn capture_tx() {
         hl.calibrate().await.unwrap();
 
         hl.configure(params).await.unwrap();
+    });
 
+    spi.done();
+}
+
+/// Test based on a capture of the competitor radio_sx128x crate working on a test device.
+#[test]
+fn capture_tx() {
+    let expectations = [
+        cmd_w(0x8F, &[0x00, 0x00]),
+        buf_w(0x00, &[0x00; 16]),
+        cmd_r(0xC0, &[0xC3]),
+        cmd_w(0x8D, &[0x40, 0x41, 0x40, 0x41, 0x00, 0x00, 0x00, 0x00]),
+        cmd_w(0x83, &[0x00, 0x00, 0x00]),
+        cmd_r(0xC0, &[0xC3]),
+        // // After polling for a while
+        cmd_r(0x15, &[0x00, 0x01]),
+        cmd_w(0x97, &[0x00, 0x01]),
+        cmd_r(0xC0, &[0x43]),
+    ];
+    let mut spi = Mock::new(expectations.iter().flatten());
+    let mut hl = hl::SX128X::new(&mut spi, MockWait, MockWait, MockOutput, MockDelay);
+
+    embassy_futures::block_on(async {
         hl.send(&[0x00; 16]).await.unwrap();
 
         {
