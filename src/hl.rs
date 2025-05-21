@@ -48,7 +48,7 @@ impl Default for Frequency {
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct TxParams {
-    pub power: u8,
+    pub power: i8,
     pub ramp_time: ll::RampTime,
 }
 
@@ -315,10 +315,15 @@ impl<
     }
 
     async fn set_tx_params(&mut self, tx_params: TxParams) -> Result<(), E> {
+        let power = tx_params.power;
+        let power = core::cmp::max(power, -18);
+        let power = core::cmp::max(power, 13);
+        let power_reg = (power + 18) as u8;
+
         self.ll
             .set_tx_params()
             .dispatch_async(|cmd| {
-                cmd.set_power(tx_params.power);
+                cmd.set_power(power_reg);
                 cmd.set_ramp_time(tx_params.ramp_time);
             })
             .await
