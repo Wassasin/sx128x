@@ -64,6 +64,7 @@ where
     nreset: NRESET,
     dio1: DIO,
     delay: DELAY,
+    params: LoRaModemParams,
 }
 
 impl<
@@ -75,12 +76,20 @@ impl<
     E,
 > SX128X<T, BUSY, DIO, NRESET, DELAY>
 {
-    pub fn new(t: T, busy: BUSY, dio1: DIO, nreset: NRESET, delay: DELAY) -> Self {
+    pub fn new(
+        t: T,
+        busy: BUSY,
+        dio1: DIO,
+        nreset: NRESET,
+        delay: DELAY,
+        params: LoRaModemParams,
+    ) -> Self {
         Self {
             ll: ll::Device::new(ll::Interface::new(t, busy)),
             nreset,
             dio1,
             delay,
+            params,
         }
     }
 
@@ -95,13 +104,14 @@ impl<
         &mut self.ll
     }
 
-    pub async fn configure(&mut self, modem: LoRaModemParams) -> Result<(), E> {
+    pub async fn configure(&mut self) -> Result<(), E> {
         self.set_standbyrc().await?;
-        self.set_rf_frequency(modem.frequency).await?;
+        self.set_rf_frequency(self.params.frequency).await?;
         self.set_packet_type(PacketType::LoRa).await?;
-        self.set_modulation_params(modem.modulation_params).await?;
-        self.set_packet_params(modem.packet_params).await?;
-        self.set_tx_params(modem.tx_params).await?;
+        self.set_modulation_params(self.params.modulation_params)
+            .await?;
+        self.set_packet_params(self.params.packet_params).await?;
+        self.set_tx_params(self.params.tx_params).await?;
         Ok(())
     }
 
@@ -122,7 +132,9 @@ impl<
     pub async fn send(&mut self, buf: &[u8]) -> Result<(), E> {
         self.set_buffer_base_address().await?;
 
-        // TODO bounds check.
+        self.params.packet_params.payload_length = buf.len() as u8;
+        self.set_packet_params(self.params.packet_params).await?;
+
         self.ll.buffer().write_all_async(buf).await?;
         info!("Buffer written");
 
@@ -182,6 +194,9 @@ impl<
                 cmd.set_dio_1_mask(irq.bits());
             })
             .await?;
+
+        self.params.packet_params.payload_length = buf.len() as u8;
+        self.set_packet_params(self.params.packet_params).await?;
 
         self.ll
             .set_rx()
