@@ -29,26 +29,34 @@ where
     ) -> Result<(), Self::Error> {
         let command = [address];
 
-        let mut operations = if input.len() > 0 && output.len() == 0 {
+        let _ = self.busy.wait_for_low().await;
+
+        if input.len() > 0 && output.len() == 0 {
             // Write operation
-            [
-                Operation::Write(&command),
-                Operation::Write(input),
-                Operation::Read(output), // This is empty.
-            ]
+            self.spi
+                .transaction(&mut [
+                    Operation::Write(&command),
+                    Operation::Write(input),
+                    Operation::Read(output), // This is empty.
+                ])
+                .await?;
         } else if input.len() == 0 && output.len() > 0 {
             // Read operation
-            [
-                Operation::Write(&command),
-                Operation::Write(&[0x00]),
-                Operation::Read(output),
-            ]
+            self.spi
+                .transaction(&mut [
+                    Operation::Write(&command),
+                    Operation::Write(&[0x00]),
+                    Operation::Read(output),
+                ])
+                .await?;
+        } else if input.len() == 0 && output.len() == 0 {
+            self.spi
+                .transaction(&mut [Operation::Write(&command)])
+                .await?;
         } else {
-            panic!("Neither read nor write command");
+            panic!("Neither nop, read nor write command");
         };
 
-        let _ = self.busy.wait_for_low().await;
-        self.spi.transaction(&mut operations).await?;
         let _ = self.busy.wait_for_low().await;
         Ok(())
     }
