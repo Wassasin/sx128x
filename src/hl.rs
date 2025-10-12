@@ -136,10 +136,6 @@ impl<
         self.set_packet_params(self.params.packet_params).await?;
 
         self.ll.buffer().write_all_async(buf).await?;
-        info!("Buffer written");
-
-        let status = self.ll.get_status().dispatch_async().await?;
-        info!("Status: {}", status);
 
         let irq = Irq::TxDone | Irq::RxTxTimeout | Irq::CrcError; // TODO why CRC_ERROR?
 
@@ -153,21 +149,15 @@ impl<
             })
             .await?;
 
-        info!("DIO set");
         self.ll
             .set_tx()
             .dispatch_async(|cmd| cmd.set_period_base_count(ll::TxTimeoutBaseCount::SingleMode))
             .await?;
-        info!("Tx mode set");
-
-        let status = self.ll.get_status().dispatch_async().await?;
-        info!("Status: {}", status);
 
         let _ = self.dio1.wait_for_high().await;
-        info!("DIO high");
 
         let irqs = self.ll.get_irq_status().dispatch_async().await?;
-        info!("IRQS {}", irqs);
+        debug!("IRQS {}", irqs);
 
         // TODO match IRQs to TxDone
 
@@ -209,7 +199,7 @@ impl<
         let _ = self.dio1.wait_for_high().await;
 
         let irqs = self.ll.get_irq_status().dispatch_async().await?;
-        info!("IRQS {}", irqs);
+        debug!("IRQS {}", irqs);
 
         let irqs_value = Irq::from_bits_retain(irqs.value());
         let result = if irqs_value.contains(Irq::RxDone) {
