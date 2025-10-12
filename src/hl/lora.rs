@@ -1,4 +1,5 @@
 use super::{Frequency, TxParams};
+use crate::ll::field_sets::GetPacketStatusFieldsOut;
 
 #[derive(Copy, Clone, Default, PartialEq, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -133,4 +134,24 @@ pub struct LoRaModemParams {
     pub tx_params: TxParams,
     pub modulation_params: LoRaModulationParams,
     pub packet_params: LoRaPacketParams,
+}
+
+#[derive(Copy, Clone, Default, PartialEq, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct LoRaPacketStatus {
+    /// Signal power is -(rssi_sync)/2 dBm
+    pub rssi_sync: u8,
+    /// Signal-to-Noise-Ratio is snr/4 dB
+    pub snr: u8,
+}
+
+impl From<GetPacketStatusFieldsOut> for LoRaPacketStatus {
+    fn from(output: GetPacketStatusFieldsOut) -> Self {
+        let value: [u8; 8] = output.value().to_be_bytes();
+        let value = &value[3..]; // Value is only 40 bits long.
+        LoRaPacketStatus {
+            rssi_sync: value[0],
+            snr: value[1],
+        }
+    }
 }

@@ -1,6 +1,9 @@
 use core::convert::Infallible;
 
-use crate::ll::{self, PacketType};
+use crate::{
+    hl::lora::LoRaPacketStatus,
+    ll::{self, PacketType},
+};
 
 pub mod irq;
 pub mod lora;
@@ -170,7 +173,10 @@ impl<
     }
 
     // TODO packet status
-    pub async fn receive(&mut self, buf: &mut [u8]) -> Result<Option<usize>, E> {
+    pub async fn receive(
+        &mut self,
+        buf: &mut [u8],
+    ) -> Result<Option<(usize, LoRaPacketStatus)>, E> {
         self.set_buffer_base_address().await?;
 
         // TODO mechanism to deal with Irq::PreambleDetected.
@@ -203,7 +209,7 @@ impl<
 
         let irqs_value = Irq::from_bits_retain(irqs.value());
         let result = if irqs_value.contains(Irq::RxDone) {
-            let _packet_status = self.ll.get_packet_status().dispatch_async().await?;
+            let packet_status = self.ll.get_packet_status().dispatch_async().await?;
             let rx_buffer_status = self.ll.get_rx_buffer_status().dispatch_async().await?;
 
             assert_eq!(rx_buffer_status.rx_start_buffer_pointer(), 0);
@@ -213,7 +219,7 @@ impl<
 
             // TODO check Error Packet Status byte.
 
-            Some(len)
+            Some((len, packet_status.into()))
         } else {
             None
         };
