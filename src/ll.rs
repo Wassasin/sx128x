@@ -31,31 +31,36 @@ where
 
         let _ = self.busy.wait_for_low().await;
 
-        if input.len() > 0 && output.len() == 0 {
-            // Write operation
-            self.spi
-                .transaction(&mut [
-                    Operation::Write(&command),
-                    Operation::Write(input),
-                    Operation::Read(output), // This is empty.
-                ])
-                .await?;
-        } else if input.len() == 0 && output.len() > 0 {
-            // Read operation
-            self.spi
-                .transaction(&mut [
-                    Operation::Write(&command),
-                    Operation::Write(&[0x00]),
-                    Operation::Read(output),
-                ])
-                .await?;
-        } else if input.len() == 0 && output.len() == 0 {
-            self.spi
-                .transaction(&mut [Operation::Write(&command)])
-                .await?;
-        } else {
-            panic!("Neither nop, read nor write command");
-        };
+        match (input.is_empty(), output.is_empty()) {
+            (false, true) => {
+                // Write operation
+                self.spi
+                    .transaction(&mut [
+                        Operation::Write(&command),
+                        Operation::Write(input),
+                        Operation::Read(output), // This is empty.
+                    ])
+                    .await?;
+            }
+            (true, false) => {
+                // Read operation
+                self.spi
+                    .transaction(&mut [
+                        Operation::Write(&command),
+                        Operation::Write(&[0x00]),
+                        Operation::Read(output),
+                    ])
+                    .await?;
+            }
+            (true, true) => {
+                self.spi
+                    .transaction(&mut [Operation::Write(&command)])
+                    .await?;
+            }
+            (false, false) => {
+                panic!("Neither nop, read nor write command");
+            }
+        }
 
         let _ = self.busy.wait_for_low().await;
         Ok(())
