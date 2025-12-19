@@ -1,7 +1,3 @@
-use core::convert::Infallible;
-
-use embedded_hal::digital::ErrorType;
-use embedded_hal_async::digital::Wait;
 use embedded_hal_mock::eh1::spi::Mock;
 
 use crate::{hl::irq::Irq, ll, test::*};
