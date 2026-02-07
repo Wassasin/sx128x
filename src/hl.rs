@@ -328,7 +328,7 @@ impl<
     async fn set_tx_params(&mut self, tx_params: TxParams) -> Result<(), E> {
         let power = tx_params.power;
         let power = core::cmp::max(power, -18);
-        let power = core::cmp::max(power, 13);
+        let power = core::cmp::min(power, 13);
         let power_reg = (power + 18) as u8;
 
         self.ll
