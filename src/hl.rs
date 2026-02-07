@@ -215,7 +215,8 @@ impl<
             assert_eq!(rx_buffer_status.rx_start_buffer_pointer(), 0);
 
             let len = rx_buffer_status.rx_payload_length() as usize;
-            self.ll.buffer().read_async(&mut buf[0..len]).await?;
+            let len = core::cmp::min(len, buf.len());
+            self.ll.buffer().read_async(&mut buf[..len]).await?;
 
             // TODO check Error Packet Status byte.
 
