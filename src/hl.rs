@@ -181,7 +181,7 @@ impl<
 
         // TODO mechanism to deal with Irq::PreambleDetected.
         // TODO mechanism to deal with Irq::HeaderError.
-        let irq = Irq::RxDone | Irq::RxTxTimeout | Irq::HeaderError;
+        let irq = Irq::RxDone | Irq::RxTxTimeout | Irq::HeaderError | Irq::CrcError;
 
         self.ll
             .set_dio_irq_params()
@@ -208,21 +208,26 @@ impl<
         debug!("IRQS {}", irqs);
 
         let irqs_value = Irq::from_bits_retain(irqs.value());
-        let result = if irqs_value.contains(Irq::RxDone) {
-            let packet_status = self.ll.get_packet_status().dispatch_async().await?;
-            let rx_buffer_status = self.ll.get_rx_buffer_status().dispatch_async().await?;
+        let rx_done = irqs_value.contains(Irq::RxDone);
+        let crc_error = irqs_value.contains(Irq::CrcError);
+        let result = match (rx_done, crc_error) {
+            (true, false) => {
+                let packet_status = self.ll.get_packet_status().dispatch_async().await?;
+                let rx_buffer_status = self.ll.get_rx_buffer_status().dispatch_async().await?;
 
-            assert_eq!(rx_buffer_status.rx_start_buffer_pointer(), 0);
+                assert_eq!(rx_buffer_status.rx_start_buffer_pointer(), 0);
 
-            let len = rx_buffer_status.rx_payload_length() as usize;
-            let len = core::cmp::min(len, buf.len());
-            self.ll.buffer().read_async(&mut buf[..len]).await?;
+                let len = rx_buffer_status.rx_payload_length() as usize;
+                let len = core::cmp::min(len, buf.len());
+                self.ll.buffer().read_async(&mut buf[..len]).await?;
 
-            // TODO check Error Packet Status byte.
-
-            Some((len, packet_status.into()))
-        } else {
-            None
+                Some((len, packet_status.into()))
+            }
+            (true, true) => {
+                warn!("CRC error on received packet, dropping");
+                None
+            }
+            _ => None,
         };
 
         self.ll
